@@ -1,11 +1,17 @@
-name: Build
+name: Build & Release
 
 on:
   push:
+    tags:
+      - 'v*.*.*'
     paths-ignore:
       - '*.md'
-      - '*LICENSE'
+      - 'LICENSE'
   pull_request:
+    paths-ignore:
+      - '*.md'
+      - 'LICENSE'
+  workflow_dispatch:
 
 env:
   RUSTC_WRAPPER: "sccache"
@@ -13,12 +19,11 @@ env:
 
 jobs:
   # ====================
-  # Linux (GitHub Hosted)
+  # Linux
   # ====================
   build-linux:
     name: Build Linux (${{matrix.name}})
     runs-on: ${{matrix.runner}}
-
     strategy:
       fail-fast: false
       matrix:
@@ -31,10 +36,124 @@ jobs:
             runner: ubuntu-24.04-arm
             preset: gcc
             artifact_arch: aarch64
-          # - name: Clang x86_64
-          #   runner: ubuntu-22.04
-          #   preset: clang
-          #   artifact_arch: x86_64
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build clang lld \
+            openssl libcurl4-openssl-dev zlib1g-dev libglu1-mesa-dev libdbus-1-dev \
+            libvulkan-dev libxi-dev libxrandr-dev libasound2-dev libpulse-dev \
+            libudev-dev libpng-dev libncurses5-dev libx11-xcb-dev libfreetype-dev \
+            libxinerama-dev libxcursor-dev python3-markupsafe libgtk-3-dev libssl-dev \
+            libxss-dev libfuse2 libusb-1.0-0-dev libdecor-0-dev libpipewire-0.3-dev libunwind-dev
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Configure CMake
+        run: cmake --preset x-linux-ci-${{matrix.preset}}
+
+      - name: Build
+        run: cmake --build --preset x-linux-ci-${{matrix.preset}}
+
+      - name: Generate AppImage
+        run: ci/build-appimage.sh
+
+      - name: Upload artifacts
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v7
+        with:
+          name: dusk-\( {{env.DUSK_VERSION || 'dev'}}-linux- \){{matrix.preset}}-${{matrix.artifact_arch}}
+          path: |
+            build/install/Dusk-*.AppImage
+            build/install/debug.tar.*
+
+  # ====================
+  # macOS
+  # ====================
+  build-apple:
+    name: Build Apple (${{matrix.name}})
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: AppleClang arm64
+            preset: x-macos-ci-arm64
+            artifact_name: macos-arm64
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install dependencies
+        run: brew install cmake ninja
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Configure CMake
+        run: cmake --preset ${{matrix.preset}}
+
+      - name: Build
+        run: cmake --build --preset ${{matrix.preset}}
+
+      - name: Upload artifacts
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v7
+        with:
+          name: dusk-\( {{env.DUSK_VERSION || 'dev'}}- \){{matrix.artifact_name}}
+          path: |
+            build/install/Dusk.app
+            build/install/debug.tar.*
+
+  # ====================
+  # Windows
+  # ====================
+  build-windows:
+    name: Build Windows (MSVC x86_64)
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Enable Visual Studio
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Install dependencies
+        run: choco install ninja -y
+
+      - name: Configure CMake
+        run: cmake --preset x-windows-ci-msvc
+
+      - name: Build
+        run: cmake --build --preset x-windows-ci-msvc
+
+      - name: Upload artifacts
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v7
+        with:
+          name: dusk-${{env.DUSK_VERSION || 'dev'}}-win64-msvc
+          path: |
+            build/install/*.exe
+            build/install/*.dll
+            build/install/res/
+            build/install/debug.7z          #   artifact_arch: x86_64
 
     steps:
       - uses: actions/checkout@v6
