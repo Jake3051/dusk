@@ -198,7 +198,7 @@ static uint32_t dpad_bit_at(float px, float py, float w, float h) {
     float dx = px - cx;
     float dy = py - cy;
     float dist = std::sqrt(dx * dx + dy * dy);
-    if (dist < r * 0.22f || dist > r) return 0;
+    if (dist < r * 0.15f || dist > r) return 0;
     // Angle: 0 = right, π/2 = down (screen coords)
     static constexpr float kPi = 3.14159265f;
     float angle = std::atan2(dy, dx);
@@ -606,10 +606,23 @@ void apply_virtual_input(interface_of_controller_pad* pad) {
         return;
     }
 
-    pad->mButtonFlags |= g_held;
-    uint32_t newPressed = g_held & ~g_prevHeld;
+    static constexpr float kPi = 3.14159265f;
+
+    // When the main stick is strongly deflected in one axis, also fire the
+    // corresponding D-pad button so analog stick input works in menus that
+    // only check PAD_BUTTON_LEFT / RIGHT / UP / DOWN.
+    static constexpr float kDpadThreshold = 0.65f;
+    uint32_t stickDpad = 0;
+    if (std::abs(g_stickMX) >= kDpadThreshold && std::abs(g_stickMX) > std::abs(g_stickMY))
+        stickDpad |= (g_stickMX > 0.f) ? PAD_BUTTON_RIGHT : PAD_BUTTON_LEFT;
+    if (std::abs(g_stickMY) >= kDpadThreshold && std::abs(g_stickMY) > std::abs(g_stickMX))
+        stickDpad |= (g_stickMY > 0.f) ? PAD_BUTTON_UP : PAD_BUTTON_DOWN;
+
+    uint32_t effective = g_held | stickDpad;
+    pad->mButtonFlags |= effective;
+    uint32_t newPressed = effective & ~g_prevHeld;
     pad->mPressedButtonFlags |= newPressed;
-    g_prevHeld = g_held;
+    g_prevHeld = effective;
 
     // Blend stick only when physical stick is near neutral
     if (std::abs(pad->mMainStickPosX) < 0.1f && std::abs(pad->mMainStickPosY) < 0.1f) {
@@ -618,9 +631,9 @@ void apply_virtual_input(interface_of_controller_pad* pad) {
             pad->mMainStickPosY = g_stickMY;
             float len = std::sqrt(g_stickMX * g_stickMX + g_stickMY * g_stickMY);
             pad->mMainStickValue = len;
-            static constexpr float kPi = 3.14159265f;
+            // Binary angle: (0x8000/π) * atan2(X, −Y) matches JUTGamePad::CStick::calc
             pad->mMainStickAngle = static_cast<s16>(
-                std::atan2(g_stickMY, g_stickMX) * (180.f / kPi));
+                (0x8000 / kPi) * std::atan2f(g_stickMX, -g_stickMY));
         }
     }
     if (std::abs(pad->mCStickPosX) < 0.1f && std::abs(pad->mCStickPosY) < 0.1f) {
@@ -629,9 +642,8 @@ void apply_virtual_input(interface_of_controller_pad* pad) {
             pad->mCStickPosY = g_stickCY;
             float len = std::sqrt(g_stickCX * g_stickCX + g_stickCY * g_stickCY);
             pad->mCStickValue = len;
-            static constexpr float kPi = 3.14159265f;
             pad->mCStickAngle = static_cast<s16>(
-                std::atan2(g_stickCY, g_stickCX) * (180.f / kPi));
+                (0x8000 / kPi) * std::atan2f(g_stickCX, -g_stickCY));
         }
     }
 }
