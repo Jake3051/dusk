@@ -144,6 +144,9 @@ if (DUSK_MOVIE_SUPPORT)
             get_filename_component(_jpeg_toolchain_file "${CMAKE_TOOLCHAIN_FILE}" ABSOLUTE BASE_DIR "${CMAKE_SOURCE_DIR}")
             list(APPEND _jpeg_cmake_args -DCMAKE_TOOLCHAIN_FILE=${_jpeg_toolchain_file})
         endif ()
+        if (MSVC)
+            list(APPEND _jpeg_cmake_args -DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=None)
+        endif ()
         set(_jpeg_passthrough_vars
             CMAKE_BUILD_TYPE
             CMAKE_C_COMPILER
