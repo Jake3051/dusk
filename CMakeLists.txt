@@ -105,9 +105,6 @@ set(AURORA_ENABLE_CARD ON CACHE BOOL "Enable CARD API support" FORCE)
 set(AURORA_ENABLE_RMLUI ON CACHE BOOL "Enable RmlUi UI support" FORCE)
 add_subdirectory(extern/aurora EXCLUDE_FROM_ALL)
 target_compile_definitions(aurora_mtx PRIVATE MTX_USE_PS=1)
-if (APPLE)
-    target_compile_definitions(aurora_gx PRIVATE _LIBCPP_DISABLE_AVAILABILITY)
-endif ()
 
 add_subdirectory(libs/freeverb)
 
