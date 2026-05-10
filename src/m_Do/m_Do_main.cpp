@@ -156,6 +156,12 @@ bool launchUILoop() {
                 dusk::g_imguiConsole.HandleSDLEvent(event->sdl);
                 dusk::touch_controls::handle_event(event->sdl);
                 break;
+            case AURORA_CONTROLLER_ADDED:
+                dusk::touch_controls::notify_controller_added();
+                break;
+            case AURORA_CONTROLLER_REMOVED:
+                dusk::touch_controls::notify_controller_removed();
+                break;
             case AURORA_DISPLAY_SCALE_CHANGED:
                 dusk::ImGuiEngine_Initialize(event->windowSize.scale);
                 break;
@@ -240,6 +246,12 @@ void main01(void) {
                 dusk::ui::handle_event(event->sdl);
                 dusk::g_imguiConsole.HandleSDLEvent(event->sdl);
                 dusk::touch_controls::handle_event(event->sdl);
+                break;
+            case AURORA_CONTROLLER_ADDED:
+                dusk::touch_controls::notify_controller_added();
+                break;
+            case AURORA_CONTROLLER_REMOVED:
+                dusk::touch_controls::notify_controller_removed();
                 break;
             case AURORA_DISPLAY_SCALE_CHANGED:
                 dusk::ImGuiEngine_Initialize(event->windowSize.scale);

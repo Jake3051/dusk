@@ -16,4 +16,8 @@ void apply_virtual_input(interface_of_controller_pad* pad);
 
 bool is_enabled();
 
+// Call when a physical controller connects/disconnects to auto-toggle the overlay.
+void notify_controller_added();
+void notify_controller_removed();
+
 } // namespace dusk::touch_controls

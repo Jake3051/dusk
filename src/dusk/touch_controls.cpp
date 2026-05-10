@@ -97,6 +97,14 @@ static float g_dragStartNX = 0.f, g_dragStartNY = 0.f;   // normalized finger st
 static float g_dragCtrlStartX = 0.f, g_dragCtrlStartY = 0.f; // ctrl pos when drag began
 
 // ---------------------------------------------------------------------------
+// Controller auto-disable tracking
+// ---------------------------------------------------------------------------
+static int g_controllerCount = 0;
+// True when we disabled touch automatically due to a controller connecting;
+// cleared when the user manually toggles the overlay or all controllers disconnect.
+static bool g_autoDisabled = false;
+
+// ---------------------------------------------------------------------------
 // Settings accessors (switch dispatch avoids template array problems)
 // ---------------------------------------------------------------------------
 static float get_x(int id) {
@@ -489,40 +497,64 @@ static void draw_controls() {
     }
 }
 
+static void clear_virtual_state() {
+    g_held = g_prevHeld = 0;
+    g_stickMX = g_stickMY = g_stickCX = g_stickCY = 0.f;
+    for (auto& f : g_fingers) f.active = false;
+    recompute_virtual_state();
+}
+
 static void draw_ui_buttons() {
     auto& io = ImGui::GetIO();
     float w = io.DisplaySize.x;
     float h = io.DisplaySize.y;
     float sc = getSettings().touch.scale.getValue();
 
-    float btnW = 72.f * sc;
-    float btnH = 36.f * sc;
+    float btnH   = 36.f * sc;
+    float editW  = 72.f * sc;
+    float togW   = 60.f * sc;
+    float gap    = 4.f * sc;
     float margin = 8.f * sc;
+    bool enabled = is_enabled();
 
-    ImGui::SetNextWindowPos({w - btnW - margin, h - btnH - margin}, ImGuiCond_Always);
-    ImGui::SetNextWindowSize({btnW, btnH}, ImGuiCond_Always);
+    float totalW = enabled ? (editW + gap + togW) : togW;
+
+    ImGui::SetNextWindowPos({w - totalW - margin, h - btnH - margin}, ImGuiCond_Always);
+    ImGui::SetNextWindowSize({totalW, btnH}, ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(0.0f);
     ImGui::Begin("##tc_btn", nullptr,
                  ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
                  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
-                 ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoInputs * 0);
+                 ImGuiWindowFlags_NoNav);
 
-    if (g_customizeMode) {
-        if (ImGui::Button("Done##tc", {btnW, btnH})) {
-            g_customizeMode = false;
-            // Release any captured drag fingers
-            g_dragCtrl   = CTRL_NONE;
-            g_dragFinger = 0;
-            config::Save();
+    if (enabled) {
+        if (g_customizeMode) {
+            if (ImGui::Button("Done##tc", {editW, btnH})) {
+                g_customizeMode = false;
+                g_dragCtrl   = CTRL_NONE;
+                g_dragFinger = 0;
+                config::Save();
+            }
+        } else {
+            if (ImGui::Button("Edit##tc", {editW, btnH})) {
+                g_customizeMode = true;
+                clear_virtual_state();
+            }
         }
-    } else {
-        if (ImGui::Button("Edit##tc", {btnW, btnH})) {
-            g_customizeMode = true;
-            // Clear all active gameplay touches so nothing stays stuck
-            for (auto& f : g_fingers) f.active = false;
-            recompute_virtual_state();
+        ImGui::SameLine(0.f, gap);
+    }
+
+    if (ImGui::Button(enabled ? "Hide##tc_tog" : "Touch##tc_tog", {togW, btnH})) {
+        bool nowEnabled = !enabled;
+        getSettings().touch.enabled.setValue(nowEnabled);
+        g_autoDisabled = false; // user has explicitly chosen, clear auto state
+        config::Save();
+        if (!nowEnabled) {
+            g_customizeMode = false;
+            clear_virtual_state();
         }
     }
+
     ImGui::End();
 }
 
@@ -557,12 +589,12 @@ void handle_event(const SDL_Event& event) {
 }
 
 void draw() {
-    if (!is_enabled()) return;
     if (!dusk::IsGameLaunched) return;
-    // Hide the overlay while any UI document (settings menu etc.) is open
     if (dusk::ui::any_document_visible()) return;
 
-    draw_controls();
+    if (is_enabled()) {
+        draw_controls();
+    }
     draw_ui_buttons();
 }
 
@@ -601,6 +633,32 @@ void apply_virtual_input(interface_of_controller_pad* pad) {
             pad->mCStickAngle = static_cast<s16>(
                 std::atan2(g_stickCY, g_stickCX) * (180.f / kPi));
         }
+    }
+}
+
+void notify_controller_added() {
+    ++g_controllerCount;
+    // Auto-disable touch when the first physical controller connects,
+    // but only if we haven't been manually overridden by the user.
+    if (g_controllerCount == 1 && is_enabled() && !g_autoDisabled) {
+        getSettings().touch.enabled.setValue(false);
+        g_autoDisabled = true;
+        config::Save();
+        g_customizeMode = false;
+        clear_virtual_state();
+    }
+}
+
+void notify_controller_removed() {
+    if (g_controllerCount > 0) {
+        --g_controllerCount;
+    }
+    // Re-enable touch when the last controller disconnects, but only if we
+    // were the ones who disabled it automatically.
+    if (g_controllerCount == 0 && g_autoDisabled) {
+        getSettings().touch.enabled.setValue(true);
+        g_autoDisabled = false;
+        config::Save();
     }
 }
 
