@@ -135,6 +135,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ANDROID_NDK_VERSION: 27.2.12479018
+      HAS_ANDROID_SIGNING: ${{ secrets.ANDROID_KEYSTORE != '' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -164,7 +165,7 @@ jobs:
         run: cd platforms/android && ./gradlew assembleRelease
 
       - name: Sign APK
-        if: ${{ secrets.ANDROID_KEYSTORE != '' }}
+        if: env.HAS_ANDROID_SIGNING == 'true'
         run: |
           APK=$(find platforms/android/app/build/outputs/apk -name "*arm64*release*.apk" | head -1)
           echo "${{ secrets.ANDROID_KEYSTORE }}" | base64 -d > release.keystore
@@ -178,7 +179,7 @@ jobs:
             "$APK"
 
       - name: Collect unsigned APK (no signing secrets)
-        if: ${{ secrets.ANDROID_KEYSTORE == '' }}
+        if: env.HAS_ANDROID_SIGNING != 'true'
         run: |
           APK=$(find platforms/android/app/build/outputs/apk -name "*arm64*release*.apk" | head -1)
           cp "$APK" "build/Dusk-${{ github.ref_name }}-android-arm64.apk"
@@ -197,6 +198,9 @@ jobs:
     name: iOS (arm64)
     runs-on: macos-latest
     continue-on-error: true
+    env:
+      HAS_IOS_CERT: ${{ secrets.IOS_CERTIFICATE != '' }}
+      HAS_IOS_PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE != '' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -207,7 +211,7 @@ jobs:
         run: brew install cmake ninja
 
       - name: Import signing certificate
-        if: ${{ secrets.IOS_CERTIFICATE != '' }}
+        if: env.HAS_IOS_CERT == 'true'
         run: |
           echo "${{ secrets.IOS_CERTIFICATE }}" | base64 -d > cert.p12
           security create-keychain -p "" build.keychain
@@ -219,7 +223,7 @@ jobs:
             -k "" build.keychain
 
       - name: Install provisioning profile
-        if: ${{ secrets.IOS_PROVISIONING_PROFILE != '' }}
+        if: env.HAS_IOS_PROFILE == 'true'
         run: |
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           echo "${{ secrets.IOS_PROVISIONING_PROFILE }}" | base64 -d \
