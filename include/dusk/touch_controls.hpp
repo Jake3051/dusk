@@ -1,6 +1,6 @@
 #pragma once
 
-struct SDL_Event;
+union SDL_Event;
 struct interface_of_controller_pad;
 
 namespace dusk::touch_controls {
