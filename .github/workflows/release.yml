@@ -23,13 +23,128 @@ jobs:
     name: Build Linux (x86_64)
     runs-on: self-hosted
 
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable
+          rustup default stable
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ninja-build libfuse2 \
+            libcurl4-openssl-dev libssl-dev libglu1-mesa-dev libasound2-dev \
+            libpulse-dev libudev-dev libx11-xcb-dev libxrandr-dev libxi-dev \
+            libxcursor-dev libxinerama-dev libdbus-1-dev libpng-dev \
+            libvulkan-dev zlib1g-dev libfreetype-dev libgtk-3-dev \
+            libdecor-0-dev libpipewire-0.3-dev libunwind-dev \
+            libusb-1.0-0-dev libxss-dev
+
+      - name: Patch aurora
+        run: python3 ci/patch-aurora.py
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
+
+      - name: Configure
+        run: cmake --preset x-linux-ci-gcc
+
+      - name: Build
+        run: cmake --build --preset x-linux-ci-gcc
+
+      - name: Generate AppImage
+        run: ci/build-appimage.sh
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dusk-${{env.DUSK_VERSION}}-linux-gcc-x86_64
+          path: |
+            build/install/Dusk-*.AppImage
+            build/install/debug.tar.*
+
   build-macos:
     name: Build macOS (arm64)
     runs-on: self-hosted
 
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install dependencies
+        run: brew install cmake ninja
+
+      - name: Patch aurora
+        run: python3 ci/patch-aurora.py
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
+
+      - name: Configure
+        run: cmake --preset x-macos-ci-arm64
+
+      - name: Build
+        run: cmake --build --preset x-macos-ci-arm64
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dusk-${{env.DUSK_VERSION}}-macos-appleclang-arm64
+          path: |
+            build/install/Dusk.app
+            build/install/debug.tar.*
+
   build-windows:
     name: Build Windows (MSVC x86_64)
     runs-on: self-hosted
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Enable Visual Studio environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: amd64
+
+      - name: Override VCPKG_ROOT
+        run: echo "VCPKG_ROOT=C:\vcpkg" >> $env:GITHUB_ENV
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
+
+      - name: Install dependencies
+        run: |
+          choco install ninja
+          vcpkg install freetype:x64-windows-static zstd:x64-windows-static
+
+      - name: Patch aurora
+        run: python3 ci/patch-aurora.py
+
+      - name: Configure
+        run: cmake --preset x-windows-ci-msvc
+
+      - name: Build
+        run: cmake --build --preset x-windows-ci-msvc
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dusk-${{env.DUSK_VERSION}}-win32-msvc-x86_64
+          path: |
+            build/install/*.exe
+            build/install/*.dll
+            build/install/res/
+            build/install/debug.7z
 
   build-android:
     name: Build Android (arm64-v8a, x86_64)
