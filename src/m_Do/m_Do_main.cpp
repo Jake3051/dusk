@@ -61,6 +61,7 @@
 #include "dusk/ui/overlay.hpp"
 #include "dusk/ui/prelaunch.hpp"
 #include "dusk/ui/preset.hpp"
+#include "dusk/touch_controls.hpp"
 #include "dusk/ui/ui.hpp"
 #include "version.h"
 
@@ -153,6 +154,7 @@ bool launchUILoop() {
             case AURORA_SDL_EVENT:
                 dusk::ui::handle_event(event->sdl);
                 dusk::g_imguiConsole.HandleSDLEvent(event->sdl);
+                dusk::touch_controls::handle_event(event->sdl);
                 break;
             case AURORA_DISPLAY_SCALE_CHANGED:
                 dusk::ImGuiEngine_Initialize(event->windowSize.scale);
@@ -237,6 +239,7 @@ void main01(void) {
             case AURORA_SDL_EVENT:
                 dusk::ui::handle_event(event->sdl);
                 dusk::g_imguiConsole.HandleSDLEvent(event->sdl);
+                dusk::touch_controls::handle_event(event->sdl);
                 break;
             case AURORA_DISPLAY_SCALE_CHANGED:
                 dusk::ImGuiEngine_Initialize(event->windowSize.scale);

@@ -4,6 +4,7 @@
  */
 
 #include "m_Do/m_Do_controller_pad.h"
+#include "dusk/touch_controls.hpp"
 #include "JSystem/JAWExtSystem/JAWExtSystem.h"
 #include "SSystem/SComponent/c_lib.h"
 #include "d/d_com_inf_game.h"
@@ -99,6 +100,8 @@ void mDoCPd_c::read() {
         interface2++;
 #endif
     }
+
+    dusk::touch_controls::apply_virtual_input(&m_cpadInfo[0]);
 }
 
 void mDoCPd_c::convert(interface_of_controller_pad* pInterface, JUTGamePad* pPad) {

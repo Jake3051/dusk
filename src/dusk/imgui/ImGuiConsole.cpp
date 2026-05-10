@@ -16,6 +16,7 @@
 #include "dusk/audio/DuskAudioSystem.h"
 #include "dusk/config.hpp"
 #include "dusk/dusk.h"
+#include "dusk/touch_controls.hpp"
 #include "dusk/frame_interpolation.h"
 #include "dusk/livesplit.h"
 #include "dusk/main.h"
@@ -396,6 +397,7 @@ namespace dusk {
     void ImGuiConsole::PostDraw() {
         m_menuTools.afterDraw();
         ShowPipelineProgress();
+        dusk::touch_controls::draw();
     }
 
     void ImGuiConsole::UpdateDragScroll() {

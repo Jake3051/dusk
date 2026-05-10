@@ -114,6 +114,29 @@ UserSettings g_userSettings = {
         .recordingMode {"game.recordingMode", false}
     },
 
+    .touch = {
+        .enabled {"touch.enabled",
+#if defined(__ANDROID__) || (defined(__APPLE__) && TARGET_OS_IOS)
+            true
+#else
+            false
+#endif
+        },
+        .opacity {"touch.opacity", 0.75f},
+        .scale {"touch.scale", 1.0f},
+        .btnAX {"touch.btnAX", 0.88f}, .btnAY {"touch.btnAY", 0.70f},
+        .btnBX {"touch.btnBX", 0.80f}, .btnBY {"touch.btnBY", 0.82f},
+        .btnXX {"touch.btnXX", 0.88f}, .btnXY {"touch.btnXY", 0.58f},
+        .btnYX {"touch.btnYX", 0.76f}, .btnYY {"touch.btnYY", 0.70f},
+        .btnLX {"touch.btnLX", 0.08f}, .btnLY {"touch.btnLY", 0.08f},
+        .btnRX {"touch.btnRX", 0.86f}, .btnRY {"touch.btnRY", 0.08f},
+        .btnZX {"touch.btnZX", 0.73f}, .btnZY {"touch.btnZY", 0.08f},
+        .btnStartX {"touch.btnStartX", 0.50f}, .btnStartY {"touch.btnStartY", 0.92f},
+        .dpadX {"touch.dpadX", 0.12f}, .dpadY {"touch.dpadY", 0.58f},
+        .stickMainX {"touch.stickMainX", 0.13f}, .stickMainY {"touch.stickMainY", 0.78f},
+        .stickCX {"touch.stickCX", 0.74f}, .stickCY {"touch.stickCY", 0.84f},
+    },
+
     .backend = {
         .isoPath {"backend.isoPath", ""},
         .isoVerification {"backend.isoVerification", DiscVerificationState::Unknown},
@@ -232,6 +255,22 @@ void registerSettings() {
     Register(g_userSettings.backend.checkForUpdates);
     Register(g_userSettings.backend.cardFileType);
     Register(g_userSettings.backend.enableAdvancedSettings);
+
+    // Touch controls
+    Register(g_userSettings.touch.enabled);
+    Register(g_userSettings.touch.opacity);
+    Register(g_userSettings.touch.scale);
+    Register(g_userSettings.touch.btnAX); Register(g_userSettings.touch.btnAY);
+    Register(g_userSettings.touch.btnBX); Register(g_userSettings.touch.btnBY);
+    Register(g_userSettings.touch.btnXX); Register(g_userSettings.touch.btnXY);
+    Register(g_userSettings.touch.btnYX); Register(g_userSettings.touch.btnYY);
+    Register(g_userSettings.touch.btnLX); Register(g_userSettings.touch.btnLY);
+    Register(g_userSettings.touch.btnRX); Register(g_userSettings.touch.btnRY);
+    Register(g_userSettings.touch.btnZX); Register(g_userSettings.touch.btnZY);
+    Register(g_userSettings.touch.btnStartX); Register(g_userSettings.touch.btnStartY);
+    Register(g_userSettings.touch.dpadX); Register(g_userSettings.touch.dpadY);
+    Register(g_userSettings.touch.stickMainX); Register(g_userSettings.touch.stickMainY);
+    Register(g_userSettings.touch.stickCX); Register(g_userSettings.touch.stickCY);
 }
 
 // Transient settings
