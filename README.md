@@ -14,6 +14,30 @@ Dusk is a reverse-engineered reimplementation of Twilight Princess.
 
 It aims to be as accurate as possible to the original while also providing new options, enhancements, and tools to customize your experience.
 
+# Features
+
+## 🎮 Touch Controls *(Android & iOS)*
+
+Play the full game without a physical controller using Dusk's built-in virtual gamepad overlay.
+
+- **Full button coverage** — A, B, X, Y, L, R, Z, Start, D-pad, Main Stick, and C-Stick are all available on-screen
+- **Draggable layout** — tap **Edit** in the bottom-right corner to enter customize mode, then drag any button or stick to wherever feels natural on your screen
+- **Persistent positions** — your layout is saved automatically when you tap **Done**, so it survives restarts
+- **Opacity & scale** — adjustable via the in-game settings menu
+
+### Controller Auto-Toggle
+
+Dusk detects physical controllers (Bluetooth, USB) and adapts automatically:
+
+| Event | Behavior |
+|---|---|
+| Controller connects | Touch overlay hides automatically |
+| Last controller disconnects | Touch overlay reappears automatically |
+| You tap **Hide / Touch** | Manually override at any time; auto-behavior defers to your choice |
+
+> [!NOTE]
+> The **Hide / Touch** toggle button is always visible in the bottom-right corner during gameplay — even when the overlay is off — so you can bring it back with a single tap.
+
 # Setup
 
 > [!IMPORTANT]
