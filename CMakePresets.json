@@ -360,7 +360,11 @@
         "ci"
       ],
       "cacheVariables": {
-        "AURORA_SDL3_PROVIDER": "vendor"
+        "AURORA_SDL3_PROVIDER": "vendor",
+        "SDL_X11_XSCRNSAVER": {
+          "type": "BOOL",
+          "value": false
+        }
       }
     },
     {
