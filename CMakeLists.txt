@@ -105,6 +105,9 @@ set(AURORA_ENABLE_CARD ON CACHE BOOL "Enable CARD API support" FORCE)
 set(AURORA_ENABLE_RMLUI ON CACHE BOOL "Enable RmlUi UI support" FORCE)
 add_subdirectory(extern/aurora EXCLUDE_FROM_ALL)
 target_compile_definitions(aurora_mtx PRIVATE MTX_USE_PS=1)
+if (APPLE)
+    target_compile_definitions(aurora_gx PRIVATE _LIBCPP_DISABLE_AVAILABILITY)
+endif ()
 
 add_subdirectory(libs/freeverb)
 
@@ -144,13 +147,9 @@ if (DUSK_MOVIE_SUPPORT)
             get_filename_component(_jpeg_toolchain_file "${CMAKE_TOOLCHAIN_FILE}" ABSOLUTE BASE_DIR "${CMAKE_SOURCE_DIR}")
             list(APPEND _jpeg_cmake_args -DCMAKE_TOOLCHAIN_FILE=${_jpeg_toolchain_file})
         endif ()
-        if (MSVC)
-            list(APPEND _jpeg_cmake_args -DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=None)
-        endif ()
         set(_jpeg_passthrough_vars
             CMAKE_BUILD_TYPE
             CMAKE_C_COMPILER
-            CMAKE_C_COMPILER_LAUNCHER
             CMAKE_MAKE_PROGRAM
             CMAKE_MSVC_RUNTIME_LIBRARY
             CMAKE_OSX_ARCHITECTURES
