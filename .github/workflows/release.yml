@@ -14,13 +14,14 @@ on:
   workflow_dispatch:
 
 env:
+  SCCACHE_GHA_ENABLED: "true"
   RUSTC_WRAPPER: "sccache"
   SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
 jobs:
   build-linux:
     name: Build Linux (x86_64)
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
 
     steps:
       - uses: actions/checkout@v6
@@ -44,8 +45,11 @@ jobs:
             libdecor-0-dev libpipewire-0.3-dev libunwind-dev \
             libusb-1.0-0-dev libxss-dev
 
+      - name: Patch aurora
+        run: python3 ci/patch-aurora.py
+
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
+        uses: mozilla-actions/sccache-action@v0.0.10
 
       - name: Configure
         run: cmake --preset x-linux-ci-gcc
@@ -66,7 +70,7 @@ jobs:
 
   build-macos:
     name: Build macOS (arm64)
-    runs-on: macos-14
+    runs-on: macos-latest-xlarge
 
     steps:
       - uses: actions/checkout@v6
@@ -77,17 +81,11 @@ jobs:
       - name: Install dependencies
         run: brew install cmake ninja
 
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
+      - name: Patch aurora
+        run: python3 ci/patch-aurora.py
 
-      - name: Patch aurora (macOS lacks std::atomic_ref)
-        run: |
-          sed -i '' '/static std::atomic_ref/d' extern/aurora/lib/gfx/pipeline_cache.cpp
-          sed -i '' 's/++queuedPipelines/++g_stats.queuedPipelines/g' extern/aurora/lib/gfx/pipeline_cache.cpp
-          sed -i '' 's/--queuedPipelines/--g_stats.queuedPipelines/g' extern/aurora/lib/gfx/pipeline_cache.cpp
-          sed -i '' 's/++createdPipelines/++g_stats.createdPipelines/g' extern/aurora/lib/gfx/pipeline_cache.cpp
-          sed -i '' 's/queuedPipelines = 0/g_stats.queuedPipelines = 0/g' extern/aurora/lib/gfx/pipeline_cache.cpp
-          sed -i '' 's/createdPipelines = 0/g_stats.createdPipelines = 0/g' extern/aurora/lib/gfx/pipeline_cache.cpp
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
 
       - name: Configure
         run: cmake --preset x-macos-ci-arm64
@@ -123,10 +121,13 @@ jobs:
         run: echo "VCPKG_ROOT=C:\vcpkg" >> $env:GITHUB_ENV
 
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
+        uses: mozilla-actions/sccache-action@v0.0.10
 
       - name: Install dependencies
         run: vcpkg install freetype:x64-windows-static zstd:x64-windows-static
+
+      - name: Patch aurora
+        run: python3 ci/patch-aurora.py
 
       - name: Configure
         run: cmake --preset x-windows-ci-msvc

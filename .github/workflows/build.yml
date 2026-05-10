@@ -53,7 +53,7 @@ jobs:
         run: python3 ci/patch-aurora.py
 
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
+        uses: mozilla-actions/sccache-action@v0.0.10
 
       - name: Print sccache stats
         run: sccache --show-stats
@@ -84,7 +84,7 @@ jobs:
       matrix:
         include:
           - name: AppleClang macOS arm64
-            runner: macos-latest
+            runner: macos-latest-xlarge
             platform: macos
             preset: x-macos-ci-arm64
             artifact_name: macos-appleclang-arm64
@@ -135,7 +135,7 @@ jobs:
           rustup target add x86_64-apple-darwin
 
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
+        uses: mozilla-actions/sccache-action@v0.0.10
 
       - name: Configure CMake
         run: cmake --preset ${{matrix.preset}}
@@ -195,7 +195,7 @@ jobs:
         run: echo "VCPKG_ROOT=C:\vcpkg" >> $env:GITHUB_ENV
 
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
+        uses: mozilla-actions/sccache-action@v0.0.10
 
       - name: Install dependencies
         run: |
