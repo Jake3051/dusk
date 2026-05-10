@@ -16,6 +16,10 @@ void apply_virtual_input(interface_of_controller_pad* pad);
 
 bool is_enabled();
 
+// Enter button-repositioning mode (same as tapping the in-game "Edit" button).
+// Closes the settings UI first; has no effect if touch controls are disabled.
+void enter_customize_mode();
+
 // Call when a physical controller connects/disconnects to auto-toggle the overlay.
 void notify_controller_added();
 void notify_controller_removed();

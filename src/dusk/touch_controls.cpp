@@ -636,6 +636,12 @@ void apply_virtual_input(interface_of_controller_pad* pad) {
     }
 }
 
+void enter_customize_mode() {
+    if (!is_enabled()) return;
+    g_customizeMode = true;
+    clear_virtual_state();
+}
+
 void notify_controller_added() {
     ++g_controllerCount;
     // Auto-disable touch when the first physical controller connects,

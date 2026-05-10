@@ -10,6 +10,7 @@
 #include "dusk/imgui/ImGuiEngine.hpp"
 #include "dusk/livesplit.h"
 #include "dusk/save_import.hpp"
+#include "dusk/touch_controls.hpp"
 #include "graphics_tuner.hpp"
 #include "m_Do/m_Do_main.h"
 #include "menu_bar.hpp"
@@ -1026,6 +1027,38 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                                  Rml::String(save_import::saves_dir().string()));
                 }
             });
+
+        if (IsMobile) {
+            leftPane.add_section("Touch Controls");
+            config_bool_select(leftPane, rightPane, getSettings().touch.enabled,
+                {
+                    .key = "Touch Controls",
+                    .helpText = "Show on-screen virtual buttons while playing.<br/><br/>"
+                                "When a physical controller connects, the overlay hides "
+                                "automatically and reappears when the controller disconnects.",
+                    .onChange = [](bool) { config::Save(); },
+                });
+            config_percent_select(leftPane, rightPane, getSettings().touch.scale,
+                "Button Size", "Size of the virtual buttons as a percentage of their default size.",
+                50, 200, 5,
+                [] { return !touch_controls::is_enabled(); });
+            config_percent_select(leftPane, rightPane, getSettings().touch.opacity,
+                "Opacity", "Transparency of the virtual buttons while playing.",
+                10, 100, 5,
+                [] { return !touch_controls::is_enabled(); });
+            leftPane.register_control(
+                leftPane.add_button("Customize Layout").on_pressed([] {
+                    mDoAud_seStartMenu(kSoundItemChange);
+                    touch_controls::enter_customize_mode();
+                    if (auto* doc = ui::top_document()) doc->pop();
+                }),
+                rightPane, [](Pane& pane) {
+                    pane.clear();
+                    pane.add_text("Drag buttons to reposition them on screen.");
+                    pane.add_rml("<br/><br/>Closes settings and enters layout mode. "
+                                 "Tap <b>Done</b> when finished to save.");
+                });
+        }
 
         leftPane.add_section("Dusk");
         leftPane.register_control(
