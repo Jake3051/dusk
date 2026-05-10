@@ -16,7 +16,12 @@ enum class ImportResult {
 std::filesystem::path saves_dir();
 
 // Opens saves_dir() in the OS file manager (Explorer / Finder / Nautilus).
+// On iOS this opens the Files app. On Android this is a no-op (see can_open_saves_dir()).
 void open_saves_dir();
+
+// Returns false on platforms where open_saves_dir() cannot navigate to the folder
+// (currently Android). Use this to conditionally show/disable the button.
+bool can_open_saves_dir();
 
 // Returns the detected Dolphin GCI folder (or raw file path) for Card A, or an
 // empty path if Dolphin saves are not found on this system.

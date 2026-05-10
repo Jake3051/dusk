@@ -458,35 +458,51 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                 }),
                 rightPane, [](Pane& pane) {
                     pane.clear();
-                    pane.add_text("Opens your Dusk saves folder in the file manager.");
-                    pane.add_rml("<br/><b>Current location:</b><br/>" +
-                                 Rml::String(save_import::saves_dir().string()) +
-                                 "<br/><br/>To use a folder next to the Dusk executable instead "
-                                 "of AppData, create a <b>saves/</b> folder in the same directory "
-                                 "as the Dusk binary.");
-                });
-
-            leftPane.register_control(
-                leftPane.add_button("Import from Dolphin").on_pressed([] {
-                    mDoAud_seStartMenu(kSoundItemChange);
-                    save_import::import_from_dolphin();
-                }),
-                rightPane, [](Pane& pane) {
-                    pane.clear();
-                    pane.add_text("Copies your Dolphin GCN save data into Dusk's saves folder.");
-                    auto dolphinPath = save_import::detect_dolphin_saves();
-                    if (!dolphinPath.empty()) {
-                        pane.add_rml("<br/><b>Detected:</b><br/>" +
-                                     Rml::String(dolphinPath.string()));
-                        pane.add_rml("<br/><br/><b>Destination:</b><br/>" +
-                                     Rml::String(save_import::saves_dir().string()));
-                        pane.add_rml("<br/><br/>Takes effect on next launch.");
+                    if (IsMobile && save_import::can_open_saves_dir()) {
+                        // iOS: opens Files app via shareddocuments://
+                        pane.add_text("Opens the Files app.");
+                        pane.add_rml("<br/>Navigate to <b>On My iPhone/iPad &rarr; Dusk</b> "
+                                     "to find your saves.");
+                    } else if (IsMobile) {
+                        // Android: file:// URLs are blocked; show path only
+                        pane.add_text("Your saves are stored at:");
+                        pane.add_rml("<br/>" + Rml::String(save_import::saves_dir().string()));
+                        pane.add_rml("<br/><br/>Use a file manager app to browse this folder.");
                     } else {
-                        pane.add_rml("<br/>No Dolphin save detected on this system.");
-                        pane.add_rml("<br/><br/>You can also manually copy save files "
-                                     "into the saves folder using <b>Open Saves Folder</b>.");
+                        // Desktop: Explorer / Finder / Nautilus
+                        pane.add_text("Opens your Dusk saves folder in the file manager.");
+                        pane.add_rml("<br/><b>Current location:</b><br/>" +
+                                     Rml::String(save_import::saves_dir().string()) +
+                                     "<br/><br/>To use a folder next to the Dusk executable instead "
+                                     "of AppData, create a <b>saves/</b> folder in the same directory "
+                                     "as the Dusk binary.");
                     }
                 });
+
+            // Dolphin runs on desktop and Android but not iOS.
+            if (!IsMobile || !save_import::can_open_saves_dir()) {
+                leftPane.register_control(
+                    leftPane.add_button("Import from Dolphin").on_pressed([] {
+                        mDoAud_seStartMenu(kSoundItemChange);
+                        save_import::import_from_dolphin();
+                    }),
+                    rightPane, [](Pane& pane) {
+                        pane.clear();
+                        pane.add_text("Copies your Dolphin GCN save data into Dusk's saves folder.");
+                        auto dolphinPath = save_import::detect_dolphin_saves();
+                        if (!dolphinPath.empty()) {
+                            pane.add_rml("<br/><b>Detected:</b><br/>" +
+                                         Rml::String(dolphinPath.string()));
+                            pane.add_rml("<br/><br/><b>Destination:</b><br/>" +
+                                         Rml::String(save_import::saves_dir().string()));
+                            pane.add_rml("<br/><br/>Takes effect on next launch.");
+                        } else {
+                            pane.add_rml("<br/>No Dolphin save detected on this system.");
+                            pane.add_rml("<br/><br/>You can also manually copy save files "
+                                         "into the saves folder using <b>Open Saves Folder</b>.");
+                        }
+                    });
+            }
         });
     }
 
@@ -996,9 +1012,19 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
             }),
             rightPane, [](Pane& pane) {
                 pane.clear();
-                pane.add_text("Opens your Dusk saves folder in the file manager.");
-                pane.add_rml("<br/><b>Current location:</b><br/>" +
-                             Rml::String(save_import::saves_dir().string()));
+                if (IsMobile && save_import::can_open_saves_dir()) {
+                    pane.add_text("Opens the Files app.");
+                    pane.add_rml("<br/>Navigate to <b>On My iPhone/iPad &rarr; Dusk</b> "
+                                 "to find your saves.");
+                } else if (IsMobile) {
+                    pane.add_text("Your saves are stored at:");
+                    pane.add_rml("<br/>" + Rml::String(save_import::saves_dir().string()));
+                    pane.add_rml("<br/><br/>Use a file manager app to browse this folder.");
+                } else {
+                    pane.add_text("Opens your Dusk saves folder in the file manager.");
+                    pane.add_rml("<br/><b>Current location:</b><br/>" +
+                                 Rml::String(save_import::saves_dir().string()));
+                }
             });
 
         leftPane.add_section("Dusk");
