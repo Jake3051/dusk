@@ -150,6 +150,7 @@ jobs:
     env:
       ANDROID_NDK_VERSION: 29.0.14206865
       RUSTC_WRAPPER:
+      ANDROID_STAGE_STRIP: 0
 
     steps:
       - uses: actions/checkout@v6
@@ -194,10 +195,10 @@ jobs:
         working-directory: platforms/android
         run: |
           chmod +x gradlew
-          ./gradlew :app:assembleRelease
+          ./gradlew :app:assembleDebug
 
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v7
         with:
           name: dusk-${{env.DUSK_VERSION}}-android
-          path: platforms/android/app/build/outputs/apk/release/*.apk
+          path: platforms/android/app/build/outputs/apk/debug/*.apk
