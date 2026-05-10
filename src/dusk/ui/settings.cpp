@@ -9,6 +9,7 @@
 #include "dusk/file_select.hpp"
 #include "dusk/imgui/ImGuiEngine.hpp"
 #include "dusk/livesplit.h"
+#include "dusk/save_import.hpp"
 #include "graphics_tuner.hpp"
 #include "m_Do/m_Do_main.h"
 #include "menu_bar.hpp"
@@ -442,6 +443,48 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                                 getSettings().backend.cardFileType.setValue(i);
                                 config::Save();
                             });
+                    }
+                });
+
+            // ----------------------------------------------------------------
+            // Save Data
+            // ----------------------------------------------------------------
+            leftPane.add_section("Save Data");
+
+            leftPane.register_control(
+                leftPane.add_button("Open Saves Folder").on_pressed([] {
+                    mDoAud_seStartMenu(kSoundItemChange);
+                    save_import::open_saves_dir();
+                }),
+                rightPane, [](Pane& pane) {
+                    pane.clear();
+                    pane.add_text("Opens your Dusk saves folder in the file manager.");
+                    pane.add_rml("<br/><b>Current location:</b><br/>" +
+                                 Rml::String(save_import::saves_dir().string()) +
+                                 "<br/><br/>To use a folder next to the Dusk executable instead "
+                                 "of AppData, create a <b>saves/</b> folder in the same directory "
+                                 "as the Dusk binary.");
+                });
+
+            leftPane.register_control(
+                leftPane.add_button("Import from Dolphin").on_pressed([] {
+                    mDoAud_seStartMenu(kSoundItemChange);
+                    save_import::import_from_dolphin();
+                }),
+                rightPane, [](Pane& pane) {
+                    pane.clear();
+                    pane.add_text("Copies your Dolphin GCN save data into Dusk's saves folder.");
+                    auto dolphinPath = save_import::detect_dolphin_saves();
+                    if (!dolphinPath.empty()) {
+                        pane.add_rml("<br/><b>Detected:</b><br/>" +
+                                     Rml::String(dolphinPath.string()));
+                        pane.add_rml("<br/><br/><b>Destination:</b><br/>" +
+                                     Rml::String(save_import::saves_dir().string()));
+                        pane.add_rml("<br/><br/>Takes effect on next launch.");
+                    } else {
+                        pane.add_rml("<br/>No Dolphin save detected on this system.");
+                        pane.add_rml("<br/><br/>You can also manually copy save files "
+                                     "into the saves folder using <b>Open Saves Folder</b>.");
                     }
                 });
         });
@@ -944,6 +987,19 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
     add_tab("Interface", [this](Rml::Element* content) {
         auto& leftPane = add_child<Pane>(content, Pane::Type::Controlled);
         auto& rightPane = add_child<Pane>(content, Pane::Type::Uncontrolled);
+
+        leftPane.add_section("Save Data");
+        leftPane.register_control(
+            leftPane.add_button("Open Saves Folder").on_pressed([] {
+                mDoAud_seStartMenu(kSoundItemChange);
+                save_import::open_saves_dir();
+            }),
+            rightPane, [](Pane& pane) {
+                pane.clear();
+                pane.add_text("Opens your Dusk saves folder in the file manager.");
+                pane.add_rml("<br/><b>Current location:</b><br/>" +
+                             Rml::String(save_import::saves_dir().string()));
+            });
 
         leftPane.add_section("Dusk");
         leftPane.register_control(
