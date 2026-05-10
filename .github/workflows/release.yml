@@ -80,6 +80,15 @@ jobs:
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.9
 
+      - name: Patch aurora (macOS lacks std::atomic_ref)
+        run: |
+          sed -i '' '/static std::atomic_ref/d' extern/aurora/lib/gfx/pipeline_cache.cpp
+          sed -i '' 's/++queuedPipelines/++g_stats.queuedPipelines/g' extern/aurora/lib/gfx/pipeline_cache.cpp
+          sed -i '' 's/--queuedPipelines/--g_stats.queuedPipelines/g' extern/aurora/lib/gfx/pipeline_cache.cpp
+          sed -i '' 's/++createdPipelines/++g_stats.createdPipelines/g' extern/aurora/lib/gfx/pipeline_cache.cpp
+          sed -i '' 's/queuedPipelines = 0/g_stats.queuedPipelines = 0/g' extern/aurora/lib/gfx/pipeline_cache.cpp
+          sed -i '' 's/createdPipelines = 0/g_stats.createdPipelines = 0/g' extern/aurora/lib/gfx/pipeline_cache.cpp
+
       - name: Configure
         run: cmake --preset x-macos-ci-arm64
 
