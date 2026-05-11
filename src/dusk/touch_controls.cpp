@@ -88,6 +88,15 @@ static float g_stickMX = 0.f, g_stickMY = 0.f;  // main stick
 static float g_stickCX = 0.f, g_stickCY = 0.f;  // c-stick
 
 // ---------------------------------------------------------------------------
+// Tap-to-click state
+// ---------------------------------------------------------------------------
+static bool g_tapPendingA = false;
+static bool g_tapTracking = false;
+static SDL_FingerID g_tapFinger = 0;
+static float g_tapStartX = 0.f, g_tapStartY = 0.f;
+static uint64_t g_tapStartMs = 0;
+
+// ---------------------------------------------------------------------------
 // Customize mode state
 // ---------------------------------------------------------------------------
 static bool g_customizeMode = false;
@@ -331,7 +340,16 @@ static void on_finger_down(const SDL_TouchFingerEvent& ev) {
     }
 
     int ctrl = hit_test(px, py, w, h, false);
-    if (ctrl == CTRL_NONE) return;
+    if (ctrl == CTRL_NONE) {
+        if (getSettings().touch.tapToClick.getValue()) {
+            g_tapTracking = true;
+            g_tapFinger = ev.fingerID;
+            g_tapStartX = px;
+            g_tapStartY = py;
+            g_tapStartMs = ev.timestamp;
+        }
+        return;
+    }
 
     FingerState* f = alloc_finger(ev.fingerID);
     if (!f) return;
@@ -366,7 +384,16 @@ static void on_finger_motion(const SDL_TouchFingerEvent& ev) {
     }
 
     FingerState* f = find_finger(ev.fingerID);
-    if (!f) return;
+    if (!f) {
+        if (g_tapTracking && ev.fingerID == g_tapFinger) {
+            float dx = px - g_tapStartX;
+            float dy = py - g_tapStartY;
+            if (dx * dx + dy * dy > 30.f * 30.f) {
+                g_tapTracking = false;
+            }
+        }
+        return;
+    }
 
     if (f->ctrl == CTRL_DPAD) {
         f->dpadBit = dpad_bit_at(px, py, w, h);
@@ -386,6 +413,13 @@ static void on_finger_up(const SDL_TouchFingerEvent& ev) {
             g_dragFinger = 0;
         }
         return;
+    }
+
+    if (g_tapTracking && ev.fingerID == g_tapFinger) {
+        if (ev.timestamp - g_tapStartMs < 300) {
+            g_tapPendingA = true;
+        }
+        g_tapTracking = false;
     }
 
     FingerState* f = find_finger(ev.fingerID);
@@ -609,6 +643,10 @@ void apply_virtual_input(interface_of_controller_pad* pad) {
     static constexpr float kPi = 3.14159265f;
 
     uint32_t effective = g_held;
+    if (g_tapPendingA) {
+        effective |= PAD_BUTTON_A;
+        g_tapPendingA = false;
+    }
     pad->mButtonFlags |= effective;
     uint32_t newPressed = effective & ~g_prevHeld;
     pad->mPressedButtonFlags |= newPressed;
