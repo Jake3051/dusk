@@ -360,7 +360,11 @@
         "ci"
       ],
       "cacheVariables": {
-        "AURORA_SDL3_PROVIDER": "vendor"
+        "AURORA_SDL3_PROVIDER": "vendor",
+        "SDL_X11_XSCRNSAVER": {
+          "type": "BOOL",
+          "value": false
+        }
       }
     },
     {
@@ -389,7 +393,7 @@
           "type": "BOOL",
           "value": true
         },
-        "CMAKE_OSX_DEPLOYMENT_TARGET": "11.0",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "14.0",
         "CMAKE_IGNORE_PREFIX_PATH": "/opt/homebrew",
         "DUSK_MOVIE_SUPPORT": {
           "type": "BOOL",

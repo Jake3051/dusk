@@ -1,0 +1,219 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+    paths-ignore:
+      - '*.md'
+      - 'LICENSE'
+  pull_request:
+    paths-ignore:
+      - '*.md'
+      - 'LICENSE'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+
+jobs:
+  build-linux:
+    name: Build Linux (x86_64)
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable
+          rustup default stable
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ninja-build libfuse2 \
+            libcurl4-openssl-dev libssl-dev libglu1-mesa-dev libasound2-dev \
+            libpulse-dev libudev-dev libx11-xcb-dev libxrandr-dev libxi-dev \
+            libxcursor-dev libxinerama-dev libdbus-1-dev libpng-dev \
+            libvulkan-dev zlib1g-dev libfreetype-dev libgtk-3-dev \
+            libdecor-0-dev libpipewire-0.3-dev libunwind-dev \
+            libusb-1.0-0-dev libxss-dev
+
+      - name: Patch aurora
+        run: python3 ci/patch-aurora.py
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
+
+      - name: Configure
+        run: cmake --preset x-linux-ci-gcc
+
+      - name: Build
+        run: cmake --build --preset x-linux-ci-gcc
+
+      - name: Generate AppImage
+        run: ci/build-appimage.sh
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: dusk-${{env.DUSK_VERSION}}-linux-gcc-x86_64
+          path: |
+            build/install/Dusk-*.AppImage
+            build/install/debug.tar.*
+
+  build-macos:
+    name: Build macOS (arm64)
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install dependencies
+        run: brew install cmake ninja
+
+      - name: Patch aurora (saves folder)
+        run: python3 ci/patch-aurora.py
+
+      - name: Patch aurora (macOS lacks std::atomic_ref)
+        run: |
+          sed -i '' '/static std::atomic_ref/d' extern/aurora/lib/gfx/pipeline_cache.cpp
+          sed -i '' 's/++queuedPipelines/++g_stats.queuedPipelines/g' extern/aurora/lib/gfx/pipeline_cache.cpp
+          sed -i '' 's/--queuedPipelines/--g_stats.queuedPipelines/g' extern/aurora/lib/gfx/pipeline_cache.cpp
+          sed -i '' 's/++createdPipelines/++g_stats.createdPipelines/g' extern/aurora/lib/gfx/pipeline_cache.cpp
+          sed -i '' 's/queuedPipelines = 0/g_stats.queuedPipelines = 0/g' extern/aurora/lib/gfx/pipeline_cache.cpp
+          sed -i '' 's/createdPipelines = 0/g_stats.createdPipelines = 0/g' extern/aurora/lib/gfx/pipeline_cache.cpp
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
+
+      - name: Configure
+        run: cmake --preset x-macos-ci-arm64
+
+      - name: Build
+        run: cmake --build --preset x-macos-ci-arm64
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: dusk-${{env.DUSK_VERSION}}-macos-appleclang-arm64
+          path: |
+            build/install/Dusk.app
+            build/install/debug.tar.*
+
+  build-windows:
+    name: Build Windows (MSVC x86_64)
+    runs-on: windows-2022
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Enable Visual Studio environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: amd64
+
+      # msvc-dev-cmd sets VCPKG_ROOT, set it back
+      - name: Override VCPKG_ROOT
+        run: echo "VCPKG_ROOT=C:\vcpkg" >> $env:GITHUB_ENV
+
+      - name: Patch aurora
+        run: python3 ci/patch-aurora.py
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
+
+      - name: Install dependencies
+        run: vcpkg install freetype:x64-windows-static zstd:x64-windows-static
+
+      - name: Configure
+        run: cmake --preset x-windows-ci-msvc
+
+      - name: Build
+        run: cmake --build --preset x-windows-ci-msvc
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: dusk-${{env.DUSK_VERSION}}-win32-msvc-x86_64
+          path: |
+            build/install/*.exe
+            build/install/*.dll
+            build/install/res/
+            build/install/debug.7z
+
+  build-android:
+    name: Build Android (arm64-v8a, x86_64)
+    runs-on: ubuntu-24.04
+    env:
+      ANDROID_NDK_VERSION: 29.0.14206865
+      RUSTC_WRAPPER:
+      ANDROID_STAGE_STRIP: 0
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-35 build-tools;35.0.0 ndk;29.0.14206865'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ninja-build
+
+      - name: Install Rust Android targets
+        run: |
+          rustup target add aarch64-linux-android x86_64-linux-android
+
+      - name: Build native libs (arm64-v8a)
+        run: |
+          cmake --preset android-arm64
+          cmake --build --preset android-arm64
+
+      - name: Build native libs (x86_64)
+        run: |
+          cmake --preset android-x86_64
+          cmake --build --preset android-x86_64
+
+      - name: Stage JNI libs
+        run: ./platforms/android/scripts/stage-jni-libs.sh
+
+      - name: Assemble APK
+        working-directory: platforms/android
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug
+
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: dusk-${{env.DUSK_VERSION}}-android
+          path: platforms/android/app/build/outputs/apk/debug/*.apk

@@ -9,6 +9,8 @@
 #include "dusk/file_select.hpp"
 #include "dusk/imgui/ImGuiEngine.hpp"
 #include "dusk/livesplit.h"
+#include "dusk/save_import.hpp"
+#include "dusk/touch_controls.hpp"
 #include "graphics_tuner.hpp"
 #include "m_Do/m_Do_main.h"
 #include "menu_bar.hpp"
@@ -444,6 +446,64 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                             });
                     }
                 });
+
+            // ----------------------------------------------------------------
+            // Save Data
+            // ----------------------------------------------------------------
+            leftPane.add_section("Save Data");
+
+            leftPane.register_control(
+                leftPane.add_button("Open Saves Folder").on_pressed([] {
+                    mDoAud_seStartMenu(kSoundItemChange);
+                    save_import::open_saves_dir();
+                }),
+                rightPane, [](Pane& pane) {
+                    pane.clear();
+                    if (IsMobile && save_import::can_open_saves_dir()) {
+                        // iOS: opens Files app via shareddocuments://
+                        pane.add_text("Opens the Files app.");
+                        pane.add_rml("<br/>Navigate to <b>On My iPhone/iPad &rarr; Dusk</b> "
+                                     "to find your saves.");
+                    } else if (IsMobile) {
+                        // Android: file:// URLs are blocked; show path only
+                        pane.add_text("Your saves are stored at:");
+                        pane.add_rml("<br/>" + Rml::String(save_import::saves_dir().string()));
+                        pane.add_rml("<br/><br/>Use a file manager app to browse this folder.");
+                    } else {
+                        // Desktop: Explorer / Finder / Nautilus
+                        pane.add_text("Opens your Dusk saves folder in the file manager.");
+                        pane.add_rml("<br/><b>Current location:</b><br/>" +
+                                     Rml::String(save_import::saves_dir().string()) +
+                                     "<br/><br/>To use a folder next to the Dusk executable instead "
+                                     "of AppData, create a <b>saves/</b> folder in the same directory "
+                                     "as the Dusk binary.");
+                    }
+                });
+
+            // Dolphin runs on desktop and Android but not iOS.
+            if (!IsMobile || !save_import::can_open_saves_dir()) {
+                leftPane.register_control(
+                    leftPane.add_button("Import from Dolphin").on_pressed([] {
+                        mDoAud_seStartMenu(kSoundItemChange);
+                        save_import::import_from_dolphin();
+                    }),
+                    rightPane, [](Pane& pane) {
+                        pane.clear();
+                        pane.add_text("Copies your Dolphin GCN save data into Dusk's saves folder.");
+                        auto dolphinPath = save_import::detect_dolphin_saves();
+                        if (!dolphinPath.empty()) {
+                            pane.add_rml("<br/><b>Detected:</b><br/>" +
+                                         Rml::String(dolphinPath.string()));
+                            pane.add_rml("<br/><br/><b>Destination:</b><br/>" +
+                                         Rml::String(save_import::saves_dir().string()));
+                            pane.add_rml("<br/><br/>Takes effect on next launch.");
+                        } else {
+                            pane.add_rml("<br/>No Dolphin save detected on this system.");
+                            pane.add_rml("<br/><br/>You can also manually copy save files "
+                                         "into the saves folder using <b>Open Saves Folder</b>.");
+                        }
+                    });
+            }
         });
     }
 
@@ -944,6 +1004,69 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
     add_tab("Interface", [this](Rml::Element* content) {
         auto& leftPane = add_child<Pane>(content, Pane::Type::Controlled);
         auto& rightPane = add_child<Pane>(content, Pane::Type::Uncontrolled);
+
+        leftPane.add_section("Save Data");
+        leftPane.register_control(
+            leftPane.add_button("Open Saves Folder").on_pressed([] {
+                mDoAud_seStartMenu(kSoundItemChange);
+                save_import::open_saves_dir();
+            }),
+            rightPane, [](Pane& pane) {
+                pane.clear();
+                if (IsMobile && save_import::can_open_saves_dir()) {
+                    pane.add_text("Opens the Files app.");
+                    pane.add_rml("<br/>Navigate to <b>On My iPhone/iPad &rarr; Dusk</b> "
+                                 "to find your saves.");
+                } else if (IsMobile) {
+                    pane.add_text("Your saves are stored at:");
+                    pane.add_rml("<br/>" + Rml::String(save_import::saves_dir().string()));
+                    pane.add_rml("<br/><br/>Use a file manager app to browse this folder.");
+                } else {
+                    pane.add_text("Opens your Dusk saves folder in the file manager.");
+                    pane.add_rml("<br/><b>Current location:</b><br/>" +
+                                 Rml::String(save_import::saves_dir().string()));
+                }
+            });
+
+        if (IsMobile) {
+            leftPane.add_section("Touch Controls");
+            config_bool_select(leftPane, rightPane, getSettings().touch.enabled,
+                {
+                    .key = "Touch Controls",
+                    .helpText = "Show on-screen virtual buttons while playing.<br/><br/>"
+                                "When a physical controller connects, the overlay hides "
+                                "automatically and reappears when the controller disconnects.",
+                    .onChange = [](bool) { config::Save(); },
+                });
+            config_percent_select(leftPane, rightPane, getSettings().touch.scale,
+                "Button Size", "Size of the virtual buttons as a percentage of their default size.",
+                50, 200, 5,
+                [] { return !touch_controls::is_enabled(); });
+            config_percent_select(leftPane, rightPane, getSettings().touch.opacity,
+                "Opacity", "Transparency of the virtual buttons while playing.",
+                10, 100, 5,
+                [] { return !touch_controls::is_enabled(); });
+            config_bool_select(leftPane, rightPane, getSettings().touch.tapToClick,
+                {
+                    .key = "Tap to Confirm",
+                    .helpText = "When enabled, tapping anywhere on screen (outside the virtual buttons) "
+                                "acts as pressing the A button to confirm menu selections.",
+                    .onChange = [](bool) { config::Save(); },
+                },
+                [] { return !touch_controls::is_enabled(); });
+            leftPane.register_control(
+                leftPane.add_button("Customize Layout").on_pressed([] {
+                    mDoAud_seStartMenu(kSoundItemChange);
+                    touch_controls::enter_customize_mode();
+                    if (auto* doc = ui::top_document()) doc->pop();
+                }),
+                rightPane, [](Pane& pane) {
+                    pane.clear();
+                    pane.add_text("Drag buttons to reposition them on screen.");
+                    pane.add_rml("<br/><br/>Closes settings and enters layout mode. "
+                                 "Tap <b>Done</b> when finished to save.");
+                });
+        }
 
         leftPane.add_section("Dusk");
         leftPane.register_control(

@@ -147,7 +147,6 @@ if (DUSK_MOVIE_SUPPORT)
         set(_jpeg_passthrough_vars
             CMAKE_BUILD_TYPE
             CMAKE_C_COMPILER
-            CMAKE_C_COMPILER_LAUNCHER
             CMAKE_MAKE_PROGRAM
             CMAKE_MSVC_RUNTIME_LIBRARY
             CMAKE_OSX_ARCHITECTURES
