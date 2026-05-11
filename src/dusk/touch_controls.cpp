@@ -608,17 +608,7 @@ void apply_virtual_input(interface_of_controller_pad* pad) {
 
     static constexpr float kPi = 3.14159265f;
 
-    // When the main stick is strongly deflected in one axis, also fire the
-    // corresponding D-pad button so analog stick input works in menus that
-    // only check PAD_BUTTON_LEFT / RIGHT / UP / DOWN.
-    static constexpr float kDpadThreshold = 0.65f;
-    uint32_t stickDpad = 0;
-    if (std::abs(g_stickMX) >= kDpadThreshold && std::abs(g_stickMX) > std::abs(g_stickMY))
-        stickDpad |= (g_stickMX > 0.f) ? PAD_BUTTON_RIGHT : PAD_BUTTON_LEFT;
-    if (std::abs(g_stickMY) >= kDpadThreshold && std::abs(g_stickMY) > std::abs(g_stickMX))
-        stickDpad |= (g_stickMY > 0.f) ? PAD_BUTTON_UP : PAD_BUTTON_DOWN;
-
-    uint32_t effective = g_held | stickDpad;
+    uint32_t effective = g_held;
     pad->mButtonFlags |= effective;
     uint32_t newPressed = effective & ~g_prevHeld;
     pad->mPressedButtonFlags |= newPressed;
